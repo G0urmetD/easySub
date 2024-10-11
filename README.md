@@ -36,7 +36,7 @@ options:
                         HTTP codes for filtering, separated by a comma (e.g. 200,401,403).
   -o OUTPUT, --output OUTPUT
                         Output file name. Specifies the file name to which the subdomains are to be exported.
-  -ohttp                Schreibt die Subdomains in die Datei mit "http://" vor jeder Subdomain.
-  -ohttps               Schreibt die Subdomains in die Datei mit "https://" vor jeder Subdomain.
+  -ohttp                Adds string in front of every subdomain: http://.
+  -ohttps               Adds string in front of every subdomain: https://
   -u, --update          Switch parameter to update the tool.
 ```
