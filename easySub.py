@@ -1,11 +1,12 @@
-import os
 import re
 import argparse
 import requests
 from colorama import Fore, Style, init
 from concurrent.futures import ThreadPoolExecutor
+from update_checker import check_for_updates
 
 init(autoreset=True)
+CURRENT_VERSION = "1.1"
 
 def print_banner():
     banner = f"""{Fore.MAGENTA}
@@ -13,16 +14,56 @@ def print_banner():
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: 1.0                    |
+    |    Version: {CURRENT_VERSION}                    |
     --------------------------------------
     {Style.RESET_ALL}"""
     print(banner)
 
 def enumerate_subdomains(domain):
-    response = requests.get("https://crt.sh/?q=" + domain)
-    mylist = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', str(response.text))
-    mylist = [sub for sub in mylist if not sub.startswith("www.")]
-    return list(dict.fromkeys(mylist))
+    """
+    Combines subdomains from crt.sh and hackertarget.com.
+    """
+    subdomains_crt = enumerate_subdomains_crtsh(domain)
+    subdomains_hackertarget = enumerate_subdomains_hackertarget(domain)
+
+    # Combine both lists and remove duplicates
+    combined_subdomains = list(dict.fromkeys(subdomains_crt + subdomains_hackertarget))
+    
+    # Filter out 'www.' prefixed domains if needed
+    combined_subdomains = [sub for sub in combined_subdomains if not sub.startswith("www.")]
+
+    return combined_subdomains
+
+def enumerate_subdomains_crtsh(domain):
+    """
+    Gets subdomains from crt.sh
+    """
+    url = f"https://crt.sh/?q={domain}"
+    try:
+        response = requests.get(url, timeout=5)
+        subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', str(response.text))
+        return list(dict.fromkeys(subdomains))  # Remove duplicates
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from crt.sh: {e}")
+        return []
+
+def enumerate_subdomains_hackertarget(domain):
+    """
+    Gets subdomains from hackertarget.com
+    """
+    url = f"https://api.hackertarget.com/hostsearch/?q={domain}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            subdomains = [line.split(",")[0] for line in response.text.splitlines()]
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from hackertarget.com")
+            return []
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from hackertarget.com: {e}")
+        return []
+
 
 def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
     url = protocol + subdomain
@@ -66,58 +107,54 @@ def probe_subdomains(subdomains, filter_http_codes=None):
     
     return results
 
-def get_output_filename(filename=None):
-    if filename:
-        return filename
-    
-    base_filename = "easySub-Export"
-    counter = 1
-    while True:
-        output_file = f"{base_filename}-{counter:03}.txt"
-        if not os.path.exists(output_file):
-            return output_file
-        counter += 1
-
-def write_subdomains_to_file(subdomains, filename, filter_method):
+def write_subdomains_to_file(subdomains, filename, prefix=""):
+    """
+    Writes the subdomains into an output file. Prefix is optional to use (http/https).
+    """
     with open(filename, 'w') as f:
         for subdomain in subdomains:
-            if filter_method == "http":
-                f.write(f"http://{subdomain}\n")
-            elif filter_method == "https":
-                f.write(f"https://{subdomain}\n")
-            else:
-                f.write(f"{subdomain}\n")
+            f.write(f"{prefix}{subdomain}\n")
+    print(f"{Fore.GREEN}[+]{Style.RESET_ALL} Subdomains were exported into following file: '{filename}'.")
 
 def main():
     print_banner()
     
     parser = argparse.ArgumentParser(description="Subdomain Enumeration Script")
-    parser.add_argument('-d', '--domain', type=str, required=True, help='The domain for which subdomains are to be enumerated.')
+    parser.add_argument('-d', '--domain', type=str, help='The domain for which subdomains are to be enumerated.')
     parser.add_argument('-p', '--probe', action='store_true', help='Check subdomains for HTTP/HTTPS status codes.')
     parser.add_argument("-hc", "--httpCode", type=str, help="HTTP codes for filtering, separated by a comma (e.g. 200,401,403).")
     parser.add_argument('-o', '--output', type=str, help='Output file name. Specifies the file name to which the subdomains are to be exported.')
-    parser.add_argument('-of', '--filteroutput', type=str, choices=['http', 'https'], help='Filter method for the output. Add either ‘http://’ or ‘https://’ in front of the subdomains.')
+    parser.add_argument('-ohttp', action='store_true', help='Schreibt die Subdomains in die Datei mit "http://" vor jeder Subdomain.')
+    parser.add_argument('-ohttps', action='store_true', help='Schreibt die Subdomains in die Datei mit "https://" vor jeder Subdomain.')
     parser.add_argument('-u', '--update', action='store_true', help='Switch parameter to update the tool.')
     
     args = parser.parse_args()
-    subdomains = enumerate_subdomains(args.domain)
     
-    if args.probe:
-        if args.httpCode:
-            http_code_filter = list(map(int, args.httpCode.split(',')))
+    if args.update:
+        check_for_updates()
+        return
+
+    if args.domain:
+        subdomains = enumerate_subdomains(args.domain)
+
+        if args.probe:
+            if args.httpCode:
+                http_code_filter = list(map(int, args.httpCode.split(',')))
+            else:
+                http_code_filter = None
+            results = probe_subdomains(subdomains, http_code_filter)
+            print("\n".join(results))
         else:
-            http_code_filter = None
-        results = probe_subdomains(subdomains, http_code_filter)
-        print("\n".join(results))
-    else:
-        print("\n".join(subdomains))
+            print("\n".join(subdomains))
 
-    if args.output is not None:
-        output_file = get_output_filename(args.output if isinstance(args.output, str) else None)
-        write_subdomains_to_file(subdomains, output_file, args.filteroutput)
-        print("")
-        print(f"[INF] Subdomains were exported to the file: '{output_file}'.")
+        if args.output:
+            prefix = ""
+            if args.ohttp:
+                prefix = "http://"
+            elif args.ohttps:
+                prefix = "https://"
 
+            write_subdomains_to_file(subdomains, args.output, prefix=prefix)
 
 if __name__ == "__main__":
     main()
