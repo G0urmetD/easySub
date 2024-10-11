@@ -124,8 +124,8 @@ def main():
     parser.add_argument('-p', '--probe', action='store_true', help='Check subdomains for HTTP/HTTPS status codes.')
     parser.add_argument("-hc", "--httpCode", type=str, help="HTTP codes for filtering, separated by a comma (e.g. 200,401,403).")
     parser.add_argument('-o', '--output', type=str, help='Output file name. Specifies the file name to which the subdomains are to be exported.')
-    parser.add_argument('-ohttp', action='store_true', help='Schreibt die Subdomains in die Datei mit "http://" vor jeder Subdomain.')
-    parser.add_argument('-ohttps', action='store_true', help='Schreibt die Subdomains in die Datei mit "https://" vor jeder Subdomain.')
+    parser.add_argument('-ohttp', action='store_true', help='Adds string in front of every subdomain: http://.')
+    parser.add_argument('-ohttps', action='store_true', help='Adds string in front of every subdomain: https://')
     parser.add_argument('-u', '--update', action='store_true', help='Switch parameter to update the tool.')
     
     args = parser.parse_args()
