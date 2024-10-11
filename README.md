@@ -1,16 +1,29 @@
 # easySub
 easySub is a subdomain enumeration tool.
 
+# Usage
+```bash
+# basic usage possibilities
+python3 easySub.py -d target.domain                          # basic subdomain enumeration with cli output
+python3 easySub.py -d target.domain -p                       # basic subdomain enumeration with cli output & HTTP/HTTPS probe
+python3 easySub.py -d target.domain -p -hc 200,403           # basic subdomain enumeration with cli output & HTTP/HTTPS probe & filter for HTTP codes
+
+# output possibilities
+python3 easySub.py -d target.domain -o output.txt            # prints subdoamins into output file
+python3 easySub.py -d target.domain -o output.txt -ohttp     # prints string 'http://' in front of every subdomain in output file
+python3 easySub.py -d target.domain -o output.txt -ohttps    # prints string 'https://' in front of every subdomain in output file
+```
+
 ## Overview
 ```bash
     --------------------------------------
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: 1.0                    |
+    |    Version: 1.1                    |
     --------------------------------------
 
-usage: easySub.py [-h] -d DOMAIN [-p] [-hc HTTPCODE] [-o OUTPUT] [-of {http,https}] [-u]
+usage: easySub.py [-h] [-d DOMAIN] [-p] [-hc HTTPCODE] [-o OUTPUT] [-ohttp] [-ohttps] [-u]
 
 Subdomain Enumeration Script
 
@@ -23,7 +36,7 @@ options:
                         HTTP codes for filtering, separated by a comma (e.g. 200,401,403).
   -o OUTPUT, --output OUTPUT
                         Output file name. Specifies the file name to which the subdomains are to be exported.
-  -of {http,https}, --filteroutput {http,https}
-                        Filter method for the output. Add either ‘http://’ or ‘https://’ in front of the subdomains.
-  -u, --update          Switch parameter to update the tool. # not implemented yet
+  -ohttp                Adds string in front of every subdomain: http://.
+  -ohttps               Adds string in front of every subdomain: https://
+  -u, --update          Switch parameter to update the tool.
 ```
