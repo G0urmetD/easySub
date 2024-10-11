@@ -1,6 +1,19 @@
 # easySub
 easySub is a subdomain enumeration tool.
 
+# Usage
+```bash
+# basic usage possibilities
+python3 easySub.py -d target.domain                          # basic subdomain enumeration with cli output
+python3 easySub.py -d target.domain -p                       # basic subdomain enumeration with cli output & HTTP/HTTPS probe
+python3 easySub.py -d target.domain -p -hc 200,403           # basic subdomain enumeration with cli output & HTTP/HTTPS probe & filter for HTTP codes
+
+# output possibilities
+python3 easySub.py -d target.domain -o output.txt            # prints subdoamins into output file
+python3 easySub.py -d target.domain -o output.txt -ohttp     # prints string 'http://' in front of every subdomain in output file
+python3 easySub.py -d target.domain -o output.txt -ohttps    # prints string 'https://' in front of every subdomain in output file
+```
+
 ## Overview
 ```bash
     --------------------------------------
