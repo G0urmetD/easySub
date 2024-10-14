@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from update_checker import check_for_updates
 
 init(autoreset=True)
-CURRENT_VERSION = "1.1"
+CURRENT_VERSION = "1.1.1"
 
 def print_banner():
     banner = f"""{Fore.MAGENTA}
