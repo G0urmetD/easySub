@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from update_checker import check_for_updates
 
 init(autoreset=True)
-CURRENT_VERSION = "1.1"
+CURRENT_VERSION = "1.1.1"
 
 def print_banner():
     banner = f"""{Fore.MAGENTA}
@@ -25,9 +25,12 @@ def enumerate_subdomains(domain):
     """
     subdomains_crt = enumerate_subdomains_crtsh(domain)
     subdomains_hackertarget = enumerate_subdomains_hackertarget(domain)
+    subdomains_threatcrowd = enumerate_subdomains_threatcrowd(domain)
+    subdomains_certspotter = enumerate_subdomains_certspotter(domain)
+    subdomains_anubis = enumerate_subdomains_anubis(domain)
 
     # Combine both lists and remove duplicates
-    combined_subdomains = list(dict.fromkeys(subdomains_crt + subdomains_hackertarget))
+    combined_subdomains = list(dict.fromkeys(subdomains_crt + subdomains_hackertarget + subdomains_threatcrowd + subdomains_certspotter + subdomains_anubis))
     
     # Filter out 'www.' prefixed domains if needed
     combined_subdomains = [sub for sub in combined_subdomains if not sub.startswith("www.")]
@@ -42,6 +45,7 @@ def enumerate_subdomains_crtsh(domain):
     try:
         response = requests.get(url, timeout=5)
         subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', str(response.text))
+        #mylist = [sub for sub in mylist if not sub.startswith("www.")]
         return list(dict.fromkeys(subdomains))  # Remove duplicates
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from crt.sh: {e}")
@@ -56,6 +60,7 @@ def enumerate_subdomains_hackertarget(domain):
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             subdomains = [line.split(",")[0] for line in response.text.splitlines()]
+            #mylist = [sub for sub in mylist if not sub.startswith("www.")]
             return list(dict.fromkeys(subdomains))  # Remove duplicates
         else:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from hackertarget.com")
@@ -64,6 +69,72 @@ def enumerate_subdomains_hackertarget(domain):
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from hackertarget.com: {e}")
         return []
 
+def enumerate_subdomains_threatcrowd(domain):
+    """
+    Gets subdomains from threatcrowd.org with disabled SSL verification due to certificate issues.
+    """
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # Suppress warnings
+    
+    url = f"https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}"
+    try:
+        response = requests.get(url, timeout=5, verify=False)  # SSL verification disabled
+        if response.status_code == 200:
+            json_response = response.json()
+            if 'subdomains' in json_response:
+                subdomains = json_response['subdomains']
+                return list(dict.fromkeys(subdomains))  # Remove duplicates
+            else:
+                print(f"{Fore.YELLOW}[!] No subdomains found on ThreatCrowd for {domain}.")
+                return []
+        else:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from ThreatCrowd. Status code: {response.status_code}")
+            print(f"Response content: {response.content}")
+            return []
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from ThreatCrowd: {e}")
+        return []
+
+def enumerate_subdomains_certspotter(domain):
+    """
+    Fetches subdomains from CertSpotter's certificate transparency logs.
+    """
+    url = f"https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            json_response = response.json()
+            subdomains = []
+            for entry in json_response:
+                subdomains.extend(entry.get('dns_names', []))
+            # Remove duplicates and filter out www
+            subdomains = [sub for sub in subdomains if not sub.startswith("www.")]
+            return list(dict.fromkeys(subdomains))
+        else:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from CertSpotter. Status code: {response.status_code}")
+            return []
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from CertSpotter: {e}")
+        return []
+    
+def enumerate_subdomains_anubis(domain):
+    """
+    Fetches subdomains from AnubisDB.
+    """
+    url = f"https://jldc.me/anubis/subdomains/{domain}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            subdomains = response.json()
+            # Filter out duplicates and www subdomains
+            subdomains = [sub for sub in subdomains if not sub.startswith("www.")]
+            return list(dict.fromkeys(subdomains))
+        else:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from AnubisDB. Status code: {response.status_code}")
+            return []
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from AnubisDB: {e}")
+        return []
 
 def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
     url = protocol + subdomain

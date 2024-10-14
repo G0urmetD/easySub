@@ -2,7 +2,7 @@ import sys
 import requests
 from colorama import Fore, Style
 
-CURRENT_VERSION = "easySub-v1.1"
+CURRENT_VERSION = "easySub-v1.1.1"
 
 def check_for_updates():
     """

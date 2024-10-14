@@ -20,7 +20,7 @@ python3 easySub.py -d target.domain -o output.txt -ohttps    # prints string 'ht
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: 1.1                    |
+    |    Version: 1.1.1                  |
     --------------------------------------
 
 usage: easySub.py [-h] [-d DOMAIN] [-p] [-hc HTTPCODE] [-o OUTPUT] [-ohttp] [-ohttps] [-u]
