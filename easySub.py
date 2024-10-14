@@ -1,4 +1,5 @@
 import re
+import json
 import argparse
 import requests
 from colorama import Fore, Style, init
@@ -19,7 +20,22 @@ def print_banner():
     {Style.RESET_ALL}"""
     print(banner)
 
-def enumerate_subdomains(domain):
+def load_api_keys(config_file='config.json'):
+    """
+    Loads API keys from a JSON config file.
+    """
+    try:
+        with open(config_file, 'r') as file:
+            config = json.load(file)
+            return config
+    except FileNotFoundError:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Config file '{config_file}' not found.")
+        return {}
+    except json.JSONDecodeError:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error decoding JSON in '{config_file}'.")
+        return {}
+
+def enumerate_subdomains(domain, use_api=False):
     """
     Combines subdomains from crt.sh and hackertarget.com.
     """
@@ -29,8 +45,31 @@ def enumerate_subdomains(domain):
     subdomains_certspotter = enumerate_subdomains_certspotter(domain)
     subdomains_anubis = enumerate_subdomains_anubis(domain)
 
+    combined_subdomains = subdomains_crt + subdomains_hackertarget + subdomains_threatcrowd + subdomains_certspotter + subdomains_anubis
+
+    # If API usage is enabled, load the API keys and fetch subdomains from API sources
+    if use_api:
+        config = load_api_keys()
+        securitytrails_api_key = config.get("securitytrails_api_key")
+        shodan_api_key = config.get("shodan_api_key")
+        spyse_api_key = config.get("spyse_api_key")
+        
+        if securitytrails_api_key:
+            print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for securitytrails provided.")
+            subdomains_securitytrails = enumerate_subdomains_securitytrails(domain, securitytrails_api_key)
+            combined_subdomains += subdomains_securitytrails
+        if shodan_api_key:
+            print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for shodan provided.")
+            subdomains_shodan = enumerate_subdomains_shodan(domain, shodan_api_key)
+            combined_subdomains += subdomains_shodan
+        # if spyse_api_key:
+        #     print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for spyse provided.")
+        #     subdomains_spyse = enumerate_subdomains_spyse(domain, spyse_api_key)
+        #     combined_subdomains += subdomains_spyse
+
     # Combine both lists and remove duplicates
-    combined_subdomains = list(dict.fromkeys(subdomains_crt + subdomains_hackertarget + subdomains_threatcrowd + subdomains_certspotter + subdomains_anubis))
+    combined_subdomains = list(dict.fromkeys(combined_subdomains))
+    #combined_subdomains = list(dict.fromkeys(subdomains_crt + subdomains_hackertarget + subdomains_threatcrowd + subdomains_certspotter + subdomains_anubis))
     
     # Filter out 'www.' prefixed domains if needed
     combined_subdomains = [sub for sub in combined_subdomains if not sub.startswith("www.")]
@@ -75,7 +114,7 @@ def enumerate_subdomains_threatcrowd(domain):
     """
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # Suppress warnings
-    
+
     url = f"https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}"
     try:
         response = requests.get(url, timeout=5, verify=False)  # SSL verification disabled
@@ -85,14 +124,11 @@ def enumerate_subdomains_threatcrowd(domain):
                 subdomains = json_response['subdomains']
                 return list(dict.fromkeys(subdomains))  # Remove duplicates
             else:
-                print(f"{Fore.YELLOW}[!] No subdomains found on ThreatCrowd for {domain}.")
                 return []
         else:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from ThreatCrowd. Status code: {response.status_code}")
-            print(f"Response content: {response.content}")
+            # Suppress output or redirect to stderr
             return []
-    except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from ThreatCrowd: {e}")
+    except requests.RequestException:
         return []
 
 def enumerate_subdomains_certspotter(domain):
@@ -107,14 +143,11 @@ def enumerate_subdomains_certspotter(domain):
             subdomains = []
             for entry in json_response:
                 subdomains.extend(entry.get('dns_names', []))
-            # Remove duplicates and filter out www
             subdomains = [sub for sub in subdomains if not sub.startswith("www.")]
             return list(dict.fromkeys(subdomains))
         else:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from CertSpotter. Status code: {response.status_code}")
             return []
-    except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from CertSpotter: {e}")
+    except requests.RequestException:
         return []
     
 def enumerate_subdomains_anubis(domain):
@@ -134,6 +167,45 @@ def enumerate_subdomains_anubis(domain):
             return []
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from AnubisDB: {e}")
+        return []
+    
+def enumerate_subdomains_securitytrails(domain, api_key):
+    """
+    Fetches subdomains from SecurityTrails API.
+    """
+    url = f"https://api.securitytrails.com/v1/domain/{domain}/subdomains"
+    headers = {
+        'APIKEY': api_key
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            json_response = response.json()
+            subdomains = json_response.get('subdomains', [])
+            return [f"{sub}.{domain}" for sub in subdomains]  # Append domain to subdomains
+        else:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from SecurityTrails. Status code: {response.status_code}")
+            return []
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from SecurityTrails: {e}")
+        return []
+
+def enumerate_subdomains_shodan(domain, api_key):
+    """
+    Fetches subdomains from Shodan API.
+    """
+    url = f"https://api.shodan.io/dns/domain/{domain}?key={api_key}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            json_response = response.json()
+            subdomains = json_response.get('subdomains', [])
+            return [f"{sub}.{domain}" for sub in subdomains]  # Append domain to subdomains
+        else:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from Shodan. Status code: {response.status_code}")
+            return []
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Shodan: {e}")
         return []
 
 def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
@@ -198,6 +270,7 @@ def main():
     parser.add_argument('-ohttp', action='store_true', help='Adds string in front of every subdomain: http://.')
     parser.add_argument('-ohttps', action='store_true', help='Adds string in front of every subdomain: https://')
     parser.add_argument('-u', '--update', action='store_true', help='Switch parameter to update the tool.')
+    parser.add_argument('-api', action='store_true', help='Include sources that require API keys (configure in config.json).')
     
     args = parser.parse_args()
     
@@ -206,7 +279,7 @@ def main():
         return
 
     if args.domain:
-        subdomains = enumerate_subdomains(args.domain)
+        subdomains = enumerate_subdomains(args.domain, use_api=args.api)
 
         if args.probe:
             if args.httpCode:
