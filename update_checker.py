@@ -14,22 +14,38 @@ def load_config():
 config = load_config()
 CURRENT_VERSION = config["version"]
 
+# def check_for_updates():
+#     """
+#     Checks if a newer version is available from GitHub.
+#     """
+#     try:
+#         response = requests.get("https://api.github.com/repos/G0urmetD/easySub/releases/latest")
+#         response.raise_for_status()
+
+#         latest_version = response.json()['tag_name']
+#         if latest_version != CURRENT_VERSION:
+#             print(f"{Fore.GREEN}[+]{Style.RESET_ALL} Newer version found: {latest_version}. Current version: {CURRENT_VERSION}.")
+#             update_tool(latest_version)
+#         else:
+#             print(f"{Fore.GREEN}[+]{Style.RESET_ALL} The newest version is already installed.")
+#     except requests.RequestException as e:
+#         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error: could not check for a newer version. {str(e)}")
+
 def check_for_updates():
     """
     Checks if a newer version is available from GitHub.
     """
-    try:
-        response = requests.get("https://api.github.com/repos/G0urmetD/easySub/releases/latest")
-        response.raise_for_status()
-
+    response = requests.get("https://api.github.com/repos/G0urmetD/easySub/releases/latest")
+    
+    if response.status_code == 200:
         latest_version = response.json()['tag_name']
         if latest_version != CURRENT_VERSION:
             print(f"{Fore.GREEN}[+]{Style.RESET_ALL} Newer version found: {latest_version}. Current version: {CURRENT_VERSION}.")
             update_tool(latest_version)
         else:
-            print(f"{Fore.GREEN}[+]{Style.RESET_ALL} The newest version is already installed.")
-    except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error: could not check for a newer version. {str(e)}")
+            print(f"{Fore.GREEN}[+]{Style.RESET_ALL} newest version is already installed.")
+    else:
+        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error, could not check for a newer version.")
 
 def update_tool(latest_version):
     """
