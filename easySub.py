@@ -3,11 +3,17 @@ import json
 import argparse
 import requests
 from colorama import Fore, Style, init
-from concurrent.futures import ThreadPoolExecutor
 from update_checker import check_for_updates
+from concurrent.futures import ThreadPoolExecutor
 
 init(autoreset=True)
-CURRENT_VERSION = "1.2"
+
+def load_config():
+    with open("config.json") as config_file:
+        return json.load(config_file)
+
+config = load_config()
+CURRENT_VERSION = config["version"]
 
 def print_banner():
     banner = f"""{Fore.MAGENTA}
@@ -27,7 +33,8 @@ def load_api_keys(config_file='config.json'):
     try:
         with open(config_file, 'r') as file:
             config = json.load(file)
-            return config
+            api_keys = config.get("api_keys", {})
+            return api_keys
     except FileNotFoundError:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Config file '{config_file}' not found.")
         return {}
@@ -49,10 +56,10 @@ def enumerate_subdomains(domain, use_api=False):
 
     # If API usage is enabled, load the API keys and fetch subdomains from API sources
     if use_api:
-        config = load_api_keys()
-        securitytrails_api_key = config.get("securitytrails_api_key")
-        shodan_api_key = config.get("shodan_api_key")
-        spyse_api_key = config.get("spyse_api_key")
+        api_keys = load_api_keys()
+        securitytrails_api_key = api_keys.get("securitytrails_api_key")
+        shodan_api_key = api_keys.get("shodan_api_key")
+        spyse_api_key = api_keys.get("spyse_api_key")
         
         if securitytrails_api_key:
             print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for securitytrails provided.")
@@ -207,6 +214,30 @@ def enumerate_subdomains_shodan(domain, api_key):
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Shodan: {e}")
         return []
+
+# def enumerate_subdomains_spyse(domain, api_key):
+#     """
+#     Fetches subdomains from Spyse API.
+#     """
+#     url = f"https://api.spyse.com/v3/data/domain/subdomain"
+#     headers = {
+#         'Authorization': f'Bearer {api_key}'
+#     }
+#     params = {
+#         'domain': domain
+#     }
+#     try:
+#         response = requests.get(url, headers=headers, params=params, timeout=5)
+#         if response.status_code == 200:
+#             json_response = response.json()
+#             subdomains = json_response.get('records', [])
+#             return [record['domain'] for record in subdomains]
+#         else:
+#             print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from Spyse. Status code: {response.status_code}")
+#             return []
+#     except requests.RequestException as e:
+#         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Spyse: {e}")
+#         return []
 
 def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
     url = protocol + subdomain
