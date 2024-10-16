@@ -2,7 +2,11 @@
     "api_keys": {
         "securitytrails_api_key": "your_securitytrails_api_key",
         "shodan_api_key": "your_shodan_api_key",
-        "spyse_api_key": "your_spyse_api_key"
+        "spyse_api_key": "your_spyse_api_key",
+        "binaryedge_api_key": "your_binaryedge_api_key",
+        "passivetotal_api_username": "your_passivetotal_username",
+        "passivetotal_api_key": "your_passivetotal_api_key",
+        "virustotal_api_key": "your_virustotal_api_key_here"
     },
-    "version": "1.2.2"
+    "version": "1.2.3"
 }
