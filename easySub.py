@@ -1,10 +1,12 @@
 import os
 import re
 import json
+import time
 import argparse
 import requests
 from colorama import Fore, Style, init
 from update_checker import check_for_updates
+from requests.exceptions import RequestException
 from concurrent.futures import ThreadPoolExecutor
 
 init(autoreset=True)
