@@ -1,10 +1,12 @@
 import os
 import re
 import json
+import time
 import argparse
 import requests
 from colorama import Fore, Style, init
 from update_checker import check_for_updates
+from requests.exceptions import RequestException
 from concurrent.futures import ThreadPoolExecutor
 
 init(autoreset=True)
@@ -50,7 +52,13 @@ def enumerate_subdomains(domain, use_api=False):
             executor.submit(enumerate_subdomains_hackertarget, domain),
             executor.submit(enumerate_subdomains_threatcrowd, domain),
             executor.submit(enumerate_subdomains_certspotter, domain),
-            executor.submit(enumerate_subdomains_anubis, domain)
+            executor.submit(enumerate_subdomains_anubis, domain),
+            executor.submit(enumerate_subdomains_bufferover, domain),
+            executor.submit(enumerate_subdomains_dnsdumpster, domain),
+            executor.submit(enumerate_subdomains_alienvault, domain),
+            executor.submit(enumerate_subdomains_threatminer, domain),
+            executor.submit(enumerate_subdomains_rapiddns, domain),
+            executor.submit(enumerate_subdomains_wayback, domain)
         ]
 
         if use_api:
@@ -156,7 +164,132 @@ def enumerate_subdomains_anubis(domain):
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from AnubisDB: {e}")
         return []
+
+def enumerate_subdomains_bufferover(domain):
+    """
+    Fetches subdomains from Bufferover.run.
+    """
+    url = f"https://dns.bufferover.run/dns?q={domain}"
     
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            subdomains = [item.split(',')[1] for item in data.get('FDNS_A', [])]  # A records
+            subdomains += [item.split(',')[1] for item in data.get('RDNS', [])]   # Reverse DNS
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+    
+def enumerate_subdomains_dnsdumpster(domain):
+    """
+    Fetches subdomains from DNSDumpster.
+    """
+    url = "https://dnsdumpster.com/"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    try:
+        session = requests.Session()
+        response = session.get(url, headers=headers, timeout=10)
+        
+        # Parse the CSRF token
+        csrf_token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', response.text).group(1)
+        
+        # Submit the domain query with CSRF token
+        data = {
+            'csrfmiddlewaretoken': csrf_token,
+            'targetip': domain
+        }
+        response = session.post(url, data=data, headers=headers, timeout=10)
+        
+        subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', response.text)
+        return list(dict.fromkeys(subdomains))  # Remove duplicates
+
+    except requests.RequestException as e:
+        return []
+
+def enumerate_subdomains_alienvault(domain):
+    """
+    Fetches subdomains from AlienVault OTX.
+    """
+    url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
+    
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            subdomains = [record['hostname'] for record in data.get('passive_dns', [])]
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+
+def enumerate_subdomains_threatminer(domain):
+    """
+    Fetches subdomains from ThreatMiner.
+    """
+    url = f"https://www.threatminer.org/getData.php?e=subdomains_container&q={domain}&t=0&rt=10&p=1"
+    
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', response.text)
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+
+def enumerate_subdomains_rapiddns(domain):
+    """
+    Fetches subdomains from RapidDNS (FindSubDomains).
+    """
+    url = f"https://rapiddns.io/subdomain/{domain}?full=1&down=1"
+    
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', response.text)
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+
+def enumerate_subdomains_wayback(domain, retries=3, timeout=10):
+    """
+    Fetches subdomains from the Wayback Machine with retries in case of timeouts or request failures.
+    """
+    url = f"https://web.archive.org/cdx/search/cdx?url=*.{domain}/*&output=json&fl=original&collapse=urlkey"
+
+    for attempt in range(retries):
+        try:
+            response = requests.get(url, timeout=timeout)
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Check if the response is in the expected format (a list)
+                if isinstance(data, list) and len(data) > 1:  # First entry is likely a header, so skip it
+                    subdomains = [entry[0].split('/')[2] for entry in data[1:] if entry[0].startswith('http')]
+                    return list(dict.fromkeys(subdomains))  # Remove duplicates
+                else:
+                    print(f"{Fore.RED}[-]{Style.RESET_ALL} Unexpected data format from Wayback Machine")
+                    return []
+            else:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from Wayback Machine (Status code: {response.status_code})")
+                return []
+        except RequestException as e:
+            print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Wayback Machine: {e}")
+            if attempt < retries - 1:
+                print(f"{Fore.YELLOW}[!]{Style.RESET_ALL} Retrying... ({attempt + 1}/{retries})")
+                time.sleep(2)  # Optional delay between retries
+            else:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Maximum retries reached. Aborting.")
+                return []
+
 def enumerate_subdomains_securitytrails(domain, api_key):
     """
     Fetches subdomains from SecurityTrails API.
