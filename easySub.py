@@ -44,45 +44,28 @@ def load_api_keys(config_file='config.json'):
         return {}
 
 def enumerate_subdomains(domain, use_api=False):
-    """
-    Combines subdomains from crt.sh and hackertarget.com.
-    """
-    subdomains_crt = enumerate_subdomains_crtsh(domain)
-    subdomains_hackertarget = enumerate_subdomains_hackertarget(domain)
-    subdomains_threatcrowd = enumerate_subdomains_threatcrowd(domain)
-    subdomains_certspotter = enumerate_subdomains_certspotter(domain)
-    subdomains_anubis = enumerate_subdomains_anubis(domain)
+    with ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(enumerate_subdomains_crtsh, domain),
+            executor.submit(enumerate_subdomains_hackertarget, domain),
+            executor.submit(enumerate_subdomains_threatcrowd, domain),
+            executor.submit(enumerate_subdomains_certspotter, domain),
+            executor.submit(enumerate_subdomains_anubis, domain)
+        ]
 
-    combined_subdomains = subdomains_crt + subdomains_hackertarget + subdomains_threatcrowd + subdomains_certspotter + subdomains_anubis
+        if use_api:
+            api_keys = load_api_keys()
+            if api_keys.get("securitytrails_api_key"):
+                futures.append(executor.submit(enumerate_subdomains_securitytrails, domain, api_keys["securitytrails_api_key"]))
+            if api_keys.get("shodan_api_key"):
+                futures.append(executor.submit(enumerate_subdomains_shodan, domain, api_keys["shodan_api_key"]))
 
-    # If API usage is enabled, load the API keys and fetch subdomains from API sources
-    if use_api:
-        api_keys = load_api_keys()
-        securitytrails_api_key = api_keys.get("securitytrails_api_key")
-        shodan_api_key = api_keys.get("shodan_api_key")
-        spyse_api_key = api_keys.get("spyse_api_key")
-        
-        if securitytrails_api_key:
-            print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for securitytrails provided.")
-            subdomains_securitytrails = enumerate_subdomains_securitytrails(domain, securitytrails_api_key)
-            combined_subdomains += subdomains_securitytrails
-        if shodan_api_key:
-            print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for shodan provided.")
-            subdomains_shodan = enumerate_subdomains_shodan(domain, shodan_api_key)
-            combined_subdomains += subdomains_shodan
-        # if spyse_api_key:
-        #     print(f"{Fore.GREEN}[+]{Style.RESET_ALL} API Key for spyse provided.")
-        #     subdomains_spyse = enumerate_subdomains_spyse(domain, spyse_api_key)
-        #     combined_subdomains += subdomains_spyse
+        combined_subdomains = []
+        for future in futures:
+            combined_subdomains += future.result()
 
-    # Combine both lists and remove duplicates
-    combined_subdomains = list(dict.fromkeys(combined_subdomains))
-    #combined_subdomains = list(dict.fromkeys(subdomains_crt + subdomains_hackertarget + subdomains_threatcrowd + subdomains_certspotter + subdomains_anubis))
-    
-    # Filter out 'www.' prefixed domains if needed
-    combined_subdomains = [sub for sub in combined_subdomains if not sub.startswith("www.")]
-
-    return combined_subdomains
+    # Doppelte Subdomains entfernen und 'www.'-Prefix filtern
+    return list(dict.fromkeys([sub for sub in combined_subdomains if not sub.startswith("www.")]))
 
 def enumerate_subdomains_crtsh(domain):
     """
@@ -215,30 +198,6 @@ def enumerate_subdomains_shodan(domain, api_key):
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Shodan: {e}")
         return []
-
-# def enumerate_subdomains_spyse(domain, api_key):
-#     """
-#     Fetches subdomains from Spyse API.
-#     """
-#     url = f"https://api.spyse.com/v3/data/domain/subdomain"
-#     headers = {
-#         'Authorization': f'Bearer {api_key}'
-#     }
-#     params = {
-#         'domain': domain
-#     }
-#     try:
-#         response = requests.get(url, headers=headers, params=params, timeout=5)
-#         if response.status_code == 200:
-#             json_response = response.json()
-#             subdomains = json_response.get('records', [])
-#             return [record['domain'] for record in subdomains]
-#         else:
-#             print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from Spyse. Status code: {response.status_code}")
-#             return []
-#     except requests.RequestException as e:
-#         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Spyse: {e}")
-#         return []
 
 def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
     url = protocol + subdomain
