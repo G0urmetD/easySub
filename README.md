@@ -25,7 +25,7 @@ python3 easySub.py -d target.domain -api -p -hc 200 -o target.txt -ohttp
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: 1.2.3                  |
+    |    Version: 1.2.4                  |
     --------------------------------------
 
 usage: easySub.py [-h] [-d DOMAIN] [-p] [-hc HTTPCODE] [-o OUTPUT] [-ohttp] [-ohttps] [-u] [-api]
