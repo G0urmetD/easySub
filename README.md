@@ -13,6 +13,10 @@ python3 easySub.py -d target.domain -p -hc 200,403           # basic subdomain e
 python3 easySub.py -d target.domain -o output.txt            # prints subdoamins into output file
 python3 easySub.py -d target.domain -o output.txt -ohttp     # prints string 'http://' in front of every subdomain in output file
 python3 easySub.py -d target.domain -o output.txt -ohttps    # prints string 'https://' in front of every subdomain in output file
+
+# some examples
+python3 easySub.py -d target.domain -api -p -hc 200 -o target.txt -ohttps
+python3 easySub.py -d target.domain -api -p -hc 200 -o target.txt -ohttp
 ```
 
 ## Overview
