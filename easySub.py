@@ -93,7 +93,6 @@ def enumerate_subdomains_crtsh(domain):
         subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', str(response.text))
         return list(dict.fromkeys(subdomains))  # Remove duplicates
     except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from crt.sh: {e}")
         return []
 
 def enumerate_subdomains_hackertarget(domain):
@@ -107,10 +106,8 @@ def enumerate_subdomains_hackertarget(domain):
             subdomains = [line.split(",")[0] for line in response.text.splitlines()]
             return list(dict.fromkeys(subdomains))  # Remove duplicates
         else:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from hackertarget.com")
             return []
     except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from hackertarget.com: {e}")
         return []
 
 def enumerate_subdomains_threatcrowd(domain):
@@ -131,7 +128,6 @@ def enumerate_subdomains_threatcrowd(domain):
             else:
                 return []
         else:
-            # Suppress output or redirect to stderr
             return []
     except requests.RequestException:
         return []
@@ -168,10 +164,8 @@ def enumerate_subdomains_anubis(domain):
             subdomains = [sub for sub in subdomains if not sub.startswith("www.")]
             return list(dict.fromkeys(subdomains))
         else:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from AnubisDB. Status code: {response.status_code}")
             return []
     except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from AnubisDB: {e}")
         return []
 
 def enumerate_subdomains_bufferover(domain):
@@ -288,15 +282,11 @@ def enumerate_subdomains_wayback(domain, retries=3, timeout=10):
                     print(f"{Fore.RED}[-]{Style.RESET_ALL} Unexpected data format from Wayback Machine")
                     return []
             else:
-                print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from Wayback Machine (Status code: {response.status_code})")
                 return []
         except RequestException as e:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Wayback Machine: {e}")
             if attempt < retries - 1:
-                print(f"{Fore.YELLOW}[!]{Style.RESET_ALL} Retrying... ({attempt + 1}/{retries})")
                 time.sleep(2)  # Optional delay between retries
             else:
-                print(f"{Fore.RED}[-]{Style.RESET_ALL} Maximum retries reached. Aborting.")
                 return []
 
 def enumerate_subdomains_securitytrails(domain, api_key):
@@ -314,10 +304,8 @@ def enumerate_subdomains_securitytrails(domain, api_key):
             subdomains = json_response.get('subdomains', [])
             return [f"{sub}.{domain}" for sub in subdomains]  # Append domain to subdomains
         else:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from SecurityTrails. Status code: {response.status_code}")
             return []
     except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from SecurityTrails: {e}")
         return []
 
 def enumerate_subdomains_shodan(domain, api_key):
@@ -332,10 +320,8 @@ def enumerate_subdomains_shodan(domain, api_key):
             subdomains = json_response.get('subdomains', [])
             return [f"{sub}.{domain}" for sub in subdomains]  # Append domain to subdomains
         else:
-            print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from Shodan. Status code: {response.status_code}")
             return []
     except requests.RequestException as e:
-        print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Shodan: {e}")
         return []
 
 def enumerate_subdomains_spyse(domain, api_key):
