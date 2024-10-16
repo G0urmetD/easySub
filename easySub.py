@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import argparse
@@ -267,7 +268,8 @@ def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
 
 def probe_subdomains(subdomains, filter_http_codes=None):
     results = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    max_workers = os.cpu_count() * 2
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_results = []
         for subdomain in subdomains:
             for protocol in ['http://', 'https://']:
