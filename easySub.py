@@ -67,6 +67,15 @@ def enumerate_subdomains(domain, use_api=False):
                 futures.append(executor.submit(enumerate_subdomains_securitytrails, domain, api_keys["securitytrails_api_key"]))
             if api_keys.get("shodan_api_key"):
                 futures.append(executor.submit(enumerate_subdomains_shodan, domain, api_keys["shodan_api_key"]))
+            if api_keys.get("spyse_api_key"):
+                futures.append(executor.submit(enumerate_subdomains_spyse, domain, api_keys["spyse_api_key"]))
+            if api_keys.get("binaryedge_api_key"):
+                futures.append(executor.submit(enumerate_subdomains_binaryedge, domain, api_keys["binaryedge_api_key"]))
+            if api_keys.get("passivetotal_api_username" and "passivetotal_api_key"):
+                passivetotal_api_username = api_keys.get("passivetotal_api_username")
+                futures.append(executor.submit(enumerate_subdomains_passivetotal, domain, passivetotal_api_username, api_keys["passivetotal_api_key"]))
+            if api_keys.get("virustotal_api_key"):
+                futures.append(executor.submit(enumerate_subdomains_virustotal, domain, api_keys["virustotal_api_key"]))
 
         combined_subdomains = []
         for future in futures:
@@ -327,6 +336,89 @@ def enumerate_subdomains_shodan(domain, api_key):
             return []
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from Shodan: {e}")
+        return []
+
+def enumerate_subdomains_spyse(domain, api_key):
+    """
+    Fetches subdomains from Spyse API.
+    """
+    url = "https://api.spyse.com/v4/data/domain/subdomain"
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+    }
+    params = {
+        'domain': domain,
+    }
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        if response.status_code == 200:
+            json_response = response.json()
+            subdomains = [record['domain'] for record in json_response.get('records', [])]
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+
+def enumerate_subdomains_binaryedge(domain, api_key):
+    """
+    Fetches subdomains from BinaryEdge API.
+    """
+    url = f"https://api.binaryedge.io/v2/query/domains/subdomain/{domain}"
+    headers = {
+        'X-Key': api_key
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            json_response = response.json()
+            subdomains = json_response.get('events', [])
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+    
+def enumerate_subdomains_passivetotal(domain, api_username, api_key):
+    """
+    Fetches subdomains from PassiveTotal API (RiskIQ).
+    """
+    url = "https://api.riskiq.net/v2/enrichment/subdomains"
+    auth = (api_username, api_key)
+    params = {
+        'query': domain
+    }
+    try:
+        response = requests.get(url, auth=auth, params=params, timeout=10)
+        if response.status_code == 200:
+            json_response = response.json()
+            subdomains = json_response.get('subdomains', [])
+            return [f"{sub}.{domain}" for sub in subdomains]  # Append domain to subdomains
+        else:
+            return []
+    except requests.RequestException as e:
+        return []
+
+def enumerate_subdomains_virustotal(domain, api_key):
+    """
+    Fetches subdomains from VirusTotal API.
+    """
+    url = f"https://www.virustotal.com/api/v3/domains/{domain}/subdomains"
+    headers = {
+        'x-apikey': api_key
+    }
+    subdomains = []
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            json_response = response.json()
+            for item in json_response.get('data', []):
+                subdomains.append(item['id'])  # id contains the subdomain
+            return list(dict.fromkeys(subdomains))  # Remove duplicates
+        else:
+            return []
+    except requests.RequestException as e:
         return []
 
 def probe_single_subdomain(subdomain, protocol, filter_http_codes=None):
