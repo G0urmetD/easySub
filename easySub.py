@@ -64,7 +64,6 @@ def enumerate_subdomains(domain, use_api=False):
         for future in futures:
             combined_subdomains += future.result()
 
-    # Doppelte Subdomains entfernen und 'www.'-Prefix filtern
     return list(dict.fromkeys([sub for sub in combined_subdomains if not sub.startswith("www.")]))
 
 def enumerate_subdomains_crtsh(domain):
@@ -75,7 +74,6 @@ def enumerate_subdomains_crtsh(domain):
     try:
         response = requests.get(url, timeout=5)
         subdomains = re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+' + re.escape(domain) + r'\b', str(response.text))
-        #mylist = [sub for sub in mylist if not sub.startswith("www.")]
         return list(dict.fromkeys(subdomains))  # Remove duplicates
     except requests.RequestException as e:
         print(f"{Fore.RED}[-]{Style.RESET_ALL} Error while fetching from crt.sh: {e}")
@@ -90,7 +88,6 @@ def enumerate_subdomains_hackertarget(domain):
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
             subdomains = [line.split(",")[0] for line in response.text.splitlines()]
-            #mylist = [sub for sub in mylist if not sub.startswith("www.")]
             return list(dict.fromkeys(subdomains))  # Remove duplicates
         else:
             print(f"{Fore.RED}[-]{Style.RESET_ALL} Failed to retrieve data from hackertarget.com")
