@@ -533,6 +533,7 @@ def main():
         update_history(args.domain, subdomains)
         if args.history:
             added_subdomains, removed_subdomains = update_history(args.domain, subdomains)
+            print("")
             print(f"{Fore.CYAN}History comparison for {args.domain}:{Style.RESET_ALL}")
             if added_subdomains:
                 print(f"{Fore.GREEN}[+]{Style.RESET_ALL} New subdomains found:")
@@ -550,8 +551,8 @@ def main():
     
     end_time = time.time()
     duration = end_time - start_time
-    print(f"{Fore.YELLOW}[+]{Style.RESET_ALL} Found {len(subdomains)}\n")
     print(f"\n{Fore.YELLOW}[+]{Style.RESET_ALL} Scan completed in {duration:.2f} seconds.")
+    print(f"{Fore.YELLOW}[+]{Style.RESET_ALL} Found {Fore.CYAN}{len(subdomains)}{Style.RESET_ALL} subdomains.\n")
     
 if __name__ == "__main__":
     main()
