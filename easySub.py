@@ -490,7 +490,7 @@ def write_subdomains_to_file(subdomains, filename, prefix=""):
 
 def main():
     print_banner()
-    
+    start_time = time.time()
     parser = argparse.ArgumentParser(description="Subdomain Enumeration Script")
     parser.add_argument('-d', '--domain', type=str, help='The domain for which subdomains are to be enumerated.')
     parser.add_argument('-p', '--probe', action='store_true', help='Check subdomains for HTTP/HTTPS status codes.')
@@ -547,6 +547,11 @@ def main():
                     print(f"  {sub}")
             else:
                 print(f"{Fore.RED}[-]{Style.RESET_ALL} No subdomains were removed.")
-
+    
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"{Fore.YELLOW}[+]{Style.RESET_ALL} Found {len(subdomains)}\n")
+    print(f"\n{Fore.YELLOW}[+]{Style.RESET_ALL} Scan completed in {duration:.2f} seconds.")
+    
 if __name__ == "__main__":
     main()
