@@ -4,12 +4,14 @@ import json
 import time
 import argparse
 import requests
+from datetime import datetime
 from colorama import Fore, Style, init
 from update_checker import check_for_updates
 from requests.exceptions import RequestException
 from concurrent.futures import ThreadPoolExecutor
 
 init(autoreset=True)
+HISTORY_DIR = "history"
 
 def load_config():
     with open("config.json") as config_file:
@@ -17,6 +19,33 @@ def load_config():
 
 config = load_config()
 CURRENT_VERSION = config["version"]
+
+def update_history(domain, subdomains):
+    if not os.path.exists(HISTORY_DIR):
+        os.makedirs(HISTORY_DIR)
+
+    history_file = os.path.join(HISTORY_DIR, f"{domain}.txt")
+
+    subdomains_str = "\n".join(subdomains)
+
+    current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    formatted_date = f"[{current_date}]"
+
+    previous_subdomains = []
+    if os.path.exists(history_file):
+        with open(history_file, 'r') as f:
+            previous_content = f.read().strip().split("\n\n")
+            if len(previous_content) > 0:
+                previous_subdomains = previous_content[-1].splitlines()[1:]
+
+    with open(history_file, 'a') as f:
+        f.write(f"\n{formatted_date}\n{subdomains_str}\n")
+
+    added_subdomains = list(set(subdomains) - set(previous_subdomains))
+    removed_subdomains = list(set(previous_subdomains) - set(subdomains))
+
+    return added_subdomains, removed_subdomains
 
 def print_banner():
     banner = f"""{Fore.MAGENTA}
@@ -471,6 +500,7 @@ def main():
     parser.add_argument('-ohttps', action='store_true', help='Adds string in front of every subdomain: https://')
     parser.add_argument('-u', '--update', action='store_true', help='Switch parameter to update the tool.')
     parser.add_argument('-api', action='store_true', help='Include sources that require API keys (configure in config.json).')
+    parser.add_argument('-history', action='store_true', help='Save subdomains to a history file and compare with the last scan.')
     
     args = parser.parse_args()
     
@@ -499,6 +529,24 @@ def main():
                 prefix = "https://"
 
             write_subdomains_to_file(subdomains, args.output, prefix=prefix)
+        
+        update_history(args.domain, subdomains)
+        if args.history:
+            added_subdomains, removed_subdomains = update_history(args.domain, subdomains)
+            print(f"{Fore.CYAN}History comparison for {args.domain}:{Style.RESET_ALL}")
+            if added_subdomains:
+                print(f"{Fore.GREEN}[+]{Style.RESET_ALL} New subdomains found:")
+                for sub in added_subdomains:
+                    print(f"  {sub}")
+            else:
+                print(f"{Fore.GREEN}[+]{Style.RESET_ALL} No new subdomains found.")
+
+            if removed_subdomains:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} Subdomains removed:")
+                for sub in removed_subdomains:
+                    print(f"  {sub}")
+            else:
+                print(f"{Fore.RED}[-]{Style.RESET_ALL} No subdomains were removed.")
 
 if __name__ == "__main__":
     main()
