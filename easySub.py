@@ -53,7 +53,7 @@ def print_banner():
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: {CURRENT_VERSION}                    |
+    |    Version: {CURRENT_VERSION}                  |
     --------------------------------------
     {Style.RESET_ALL}"""
     print(banner)
