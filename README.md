@@ -19,16 +19,24 @@ python3 easySub.py -d target.domain -api -p -hc 200 -o target.txt -ohttps
 python3 easySub.py -d target.domain -api -p -hc 200 -o target.txt -ohttp
 ```
 
+# History Feature
+Especially for Bug Bounty Hunting, you may want to have an overview, about new or removed subdomains. The history feature provides kind of functionality. If you search for subdomains with the -d parameter, the tool will create a history file for every target domain with date.
+If you use the -history parameter, you will get the difference between the last and the pre last subdomain search.
+
+```bash
+python3 easySub.py -d target-domain -history
+```
+
 ## Overview
 ```bash
     --------------------------------------
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: 1.2.4                  |
+    |    Version: 1.3.1                  |
     --------------------------------------
 
-usage: easySub.py [-h] [-d DOMAIN] [-p] [-hc HTTPCODE] [-o OUTPUT] [-ohttp] [-ohttps] [-u] [-api]
+usage: easySub.py [-h] [-d DOMAIN] [-p] [-hc HTTPCODE] [-o OUTPUT] [-ohttp] [-ohttps] [-u] [-api] [-history]
 
 Subdomain Enumeration Script
 
@@ -45,4 +53,5 @@ options:
   -ohttps               Adds string in front of every subdomain: https://
   -u, --update          Switch parameter to update the tool.
   -api                  Include sources that require API keys (configure in config.json).
+  -history              Save subdomains to a history file and compare with the last scan.
 ```
