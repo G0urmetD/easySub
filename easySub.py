@@ -227,7 +227,11 @@ def enumerate_subdomains_dnsdumpster(domain):
         response = session.get(url, headers=headers, timeout=10)
         
         # Parse the CSRF token
-        csrf_token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', response.text).group(1)
+        csrf_token_match = re.search(r'name=["\']csrfmiddlewaretoken["\'] value=["\']([^"\']+)["\']', response.text)
+        if not csrf_token_match:
+            print(f"{Fore.RED}[-] CSRF-Token konnte nicht extrahiert werden. DNSDumpster hat möglicherweise das Layout geändert.{Style.RESET_ALL}")
+            return []
+        csrf_token = csrf_token_match.group(1)
         
         # Submit the domain query with CSRF token
         data = {
