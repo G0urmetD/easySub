@@ -41,7 +41,7 @@ python3 easySub.py -d target-domain -history
     |   easySub                          |
     |                                    |
     |    Author: G0urmetD                |
-    |    Version: 1.3.1                  |
+    |    Version: 1.3.2                  |
     --------------------------------------
 
 usage: easySub.py [-h] [-d DOMAIN] [-p] [-hc HTTPCODE] [-o OUTPUT] [-ohttp] [-ohttps] [-u] [-api] [-history]
